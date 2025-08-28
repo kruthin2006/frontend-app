@@ -1,0 +1,313 @@
+/* ChatWindow.css */
+
+/* The main chat window container with the background image */
+.chatWindow {
+  background-image: url('/background2.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  position: relative;
+  color: #2E2E3E;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* A semi-transparent overlay for readability in light mode */
+.chatWindow::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.7);
+  z-index: 0;
+}
+
+/* Dark Mode Styles for chatWindow and its overlay */
+html.dark .chatWindow {
+  color: #e0e0e0; /* Light text for dark mode */
+}
+
+html.dark .chatWindow::before {
+  background-color: rgba(0, 0, 0, 0.5); /* Darker overlay for dark mode */
+}
+
+
+/* Ensure the navbar and other elements are on top of the overlay */
+.navbar, .chatInput, .chatArea {
+  position: relative;
+  z-index: 1;
+}
+
+/* Your existing styles for the chat window elements */
+.chatArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.navbar {
+  background: linear-gradient(135deg, #6C63FF, #836FFF);
+  padding: 14px 22px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: none;
+  border-radius: 0 0 16px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* Dark Mode Styles for navbar */
+html.dark .navbar {
+  background: linear-gradient(135deg, #1f2937, #374151); /* Dark gradient for navbar */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+html.dark .navbar-title {
+  color: #fff;
+}
+
+
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.navbar-logo:hover {
+  transform: scale(1.08);
+}
+
+.navbar-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.navbar-title:hover {
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+.dropdown-icon {
+  font-size: 12px;
+  margin-left: 5px;
+  transition: transform 0.3s ease;
+}
+
+.navbar-title:hover .dropdown-icon {
+  transform: rotate(180deg);
+}
+
+.userIconDiv {
+  background-color: #ECEAFF;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #6C63FF;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+  margin-right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.userIconDiv:hover {
+  background-color: #d7d2ff;
+}
+
+.chatInput {
+  background-color: #fff;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid #ddd;
+  box-shadow: 0px -2px 5px rgba(0, 0, 0, 0.05);
+  gap: 10px;
+}
+
+/* Dark Mode Styles for chatInput */
+html.dark .chatInput {
+  background-color: #1f2937;
+  border-top-color: #374151;
+}
+
+.chatInput input {
+  flex: 1;
+  height: 45px;
+  padding: 0 14px;
+  background-color: #F7F7FB;
+  border: 1px solid #ccc;
+  border-radius: 25px;
+  outline: none !important;
+  font-size: 14px;
+  transition: border-color 0.3s ease-in-out;
+  display: flex;
+  align-items: center;
+  box-shadow: none !important;
+}
+
+/* Dark Mode Styles for chatInput input */
+html.dark .chatInput input {
+  background-color: #2e3541;
+  color: #fff;
+  border-color: #374151;
+}
+html.dark .chatInput input::placeholder {
+  color: #a0a0a0;
+}
+
+
+.chatInput input:focus {
+  border-color: #6C63FF;
+  box-shadow: 0 0 5px rgba(108, 99, 255, 0.3);
+}
+
+.chatInput button {
+  width: 45px;
+  height: 45px;
+  background-color: #6C63FF;
+  border: none;
+  color: #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: 0.3s;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chatInput button:hover {
+  background-color: #5A52E0;
+}
+
+.info {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #666;
+  background-color: #F0EFFD;
+  border-top: 1px solid #E2E2F5;
+  text-align: center;
+}
+/* Dark Mode Styles for info text */
+html.dark .info {
+  color: #b0b0b0;
+  background-color: #2e3541;
+  border-top: 1px solid #374151;
+}
+
+
+.loader-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+/* Dark Mode Styles for loader overlay */
+html.dark .loader-overlay {
+  background: rgba(0, 0, 0, 0.85);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+html.dark .loading-text {
+  color: #e0e0e0;
+}
+
+.loading-text {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.dropDown {
+  position: absolute;
+  top: 4rem;
+  right: 4rem;
+  width: 150px;
+  background-color: #ECEAFF;
+  color: #2E2E3E;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  text-align: left;
+  z-index: 1000;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+}
+/* Dark Mode Styles for dropdown */
+html.dark .dropDown {
+  background-color: #2e3541;
+  color: #e0e0e0;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.4);
+}
+html.dark .dropDownItem:hover {
+  background-color: #374151;
+}
+
+
+.dropDownItem {
+  font-size: 0.9rem;
+  margin: 0.3rem 0rem;
+  padding: 0.5rem 0.2rem;
+  cursor: pointer;
+}
+
+.dropDownItem:hover {
+  background-color: #D7D2FF;
+  border-radius: 6px;
+}
+
+.searchBox {
+  padding: 6px 10px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
+  outline: none;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  width: 180px;
+}
+/* Dark Mode Styles for searchBox */
+html.dark .searchBox {
+  background-color: #2e3541;
+  color: #e0e0e0;
+  border-color: #374151;
+}
+html.dark .searchBox:focus {
+  border-color: #6C63FF;
+  box-shadow: 0 0 6px rgba(108, 99, 255, 0.6);
+}
+
+.searchBox:focus {
+  border-color: #6C63FF;
+  box-shadow: 0 0 6px rgba(108, 99, 255, 0.4);
+}
