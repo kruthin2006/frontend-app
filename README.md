@@ -126,3 +126,6 @@ If you have any questions or suggestions, feel free to reach out\!
 -----
 
 > **Personal AI** — Your intelligent companion, always ready to chat.
+
+
+Contribution: Added by Kruthin
