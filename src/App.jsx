@@ -1,72 +1,71 @@
-import './App.css'
-import Sidebar from './Sidebar.jsx';
-import ChatWindow from './ChatWindow.jsx';
-import { MyContext } from './MyContext.jsx';
-import { useState, useEffect } from 'react';
-import { v1 as uuidv1 } from "uuid";
-import LoginPage from './LoginPage.jsx'; // Make sure this path is correct
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { MyProvider } from './MyContext';
+import LandingPage from './LandingPage';
+import Dashboard from './Dashboard';
+import ChatWindow from './ChatWindow';
 
 function App() {
-  // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
 
-  // Function to set isAuthenticated to true after successful login
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
-  };
-
-  // Your existing state management for chat
-  const [prompt, setPrompt] = useState("");
-  const [reply, setReply] = useState(null);
-  const [currThreadId, setCurrThreadId] = useState(uuidv1());
-  const [prevChats, setPrevChats] = useState([]); // stores chats of current thread
-  const [newChat, setNewChat] = useState(true);
-  const [allThreads, setAllThreads] = useState([]); // all chat histories
-
-  // Whenever prevChats change, update allThreads
+  // Load auth state from localStorage on mount
   useEffect(() => {
-    // Only update allThreads if authenticated, to prevent issues before login
-    if (isAuthenticated) {
-      setAllThreads((threads) => {
-        const others = threads.filter((t) => t.id !== currThreadId);
-        return [...others, { id: currThreadId, chats: prevChats }];
-      });
-    }
-  }, [prevChats, currThreadId, isAuthenticated]); // Added isAuthenticated to dependencies
+    const auth = localStorage.getItem('auth') === 'true';
+    const storedUser = localStorage.getItem('user');
+    setIsAuthenticated(auth);
+    if (storedUser) setUser(JSON.parse(storedUser));
+  }, []);
 
-  // Switch thread (to view old chat history)
-  const loadThread = (threadId) => {
-    setCurrThreadId(threadId);
-    const found = allThreads.find((t) => t.id === threadId);
-    if (found) {
-      setPrevChats(found.chats);
-      setNewChat(false);
-    }
+  const handleLogin = (userData) => {
+    setIsAuthenticated(true);
+    setUser(userData);
+    localStorage.setItem('auth', 'true');
+    localStorage.setItem('user', JSON.stringify(userData));
   };
 
-  const providerValues = {
-    prompt, setPrompt,
-    reply, setReply,
-    currThreadId, setCurrThreadId,
-    newChat, setNewChat,
-    prevChats, setPrevChats,
-    allThreads, setAllThreads,
-    loadThread, // function to load chat history
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setUser(null);
+    localStorage.removeItem('auth');
+    localStorage.removeItem('user');
   };
 
   return (
-    <MyContext.Provider value={providerValues}>
-      {isAuthenticated ? (
-        // Render Sidebar and ChatWindow if authenticated
-        <div className='app' style={{ display: 'flex', height: '100vh', width: '100vw' }}>
-          <Sidebar />
-          <ChatWindow />
+    <MyProvider>
+      <Router>
+        <div className="App">
+          <Routes>
+            {/* Landing page */}
+            <Route 
+              path="/" 
+              element={
+                isAuthenticated ? <Navigate to="/dashboard" /> : <LandingPage onLogin={handleLogin} />
+              } 
+            />
+
+            {/* Dashboard */}
+            <Route 
+              path="/dashboard" 
+              element={
+                isAuthenticated ? <Dashboard user={user} onLogout={handleLogout} /> : <Navigate to="/" />
+              } 
+            />
+
+            {/* Chat window */}
+            <Route 
+              path="/chat" 
+              element={
+                isAuthenticated ? <ChatWindow user={user} onLogout={handleLogout} /> : <Navigate to="/" />
+              } 
+            />
+
+            {/* 404 page */}
+            <Route path="*" element={<h2>404 - Page Not Found</h2>} />
+          </Routes>
         </div>
-      ) : (
-        // Render LoginPage if not authenticated
-        <LoginPage onLoginSuccess={handleLoginSuccess} />
-      )}
-    </MyContext.Provider>
+      </Router>
+    </MyProvider>
   );
 }
 

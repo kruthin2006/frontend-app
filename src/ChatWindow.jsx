@@ -1,321 +1,374 @@
-import "./ChatWindow.css";
-import LoginPage from "./LoginPage.jsx";
-import Chat from "./Chat.jsx";
-import { MyContext } from "./MyContext.jsx";
-import { useContext, useState, useEffect, useRef } from "react";
-import { ScaleLoader } from "react-spinners";
-import { Moon, Sun, Mic, MicOff, User, Search, Image, Paperclip } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Moon, Sun, Mic, MicOff, User, Search, Image, 
+  Paperclip, Send, ChevronDown, Settings, Upload, 
+  LogOut, Maximize, Minimize, X, Loader 
+} from 'lucide-react';
+import Dashboard from './Dashboard';
+import './ChatWindow.css';
 
-function ChatWindow() {
+
+const ChatWindow = ({ user, onLogout }) => {
+  const navigate = useNavigate();
+  const [darkMode, setDarkMode] = useState(true);
+  const [prompt, setPrompt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [recognition, setRecognition] = useState(null);
+  const [transcript, setTranscript] = useState("");
+  const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  
+  const [prevChats, setPrevChats] = useState([
+    {
+      role: "assistant",
+      content: "Hello! I'm your AI assistant. How can I help you today?",
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    }
+  ]);
+  
+  // Initialize speech recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+      
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0])
+          .map(result => result.transcript)
+          .join('');
+        setTranscript(transcript);
+      };
+      
+      recognition.onend = () => {
+        if (transcript) {
+          setPrompt(transcript);
+          setTranscript("");
+        }
+        setIsRecording(false);
+      };
+      
+      setRecognition(recognition);
+    } else {
+      console.warn("Speech recognition not supported in this browser");
+    }
+  }, [transcript]);
+  
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [prevChats]);
+  
+  // Toggle dark mode on <html>
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkMode]);
+  
+  // Handle full screen changes
+  useEffect(() => {
+    const handleFullScreenChange = () => {
+      setIsFullScreen(!!document.fullscreenElement);
+    };
     
-  const { prompt, setPrompt, setReply, currThreadId, prevChats, setPrevChats } =
-    useContext(MyContext);
+    document.addEventListener('fullscreenchange', handleFullScreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullScreenChange);
+    };
+  }, []);
+  
+  // Toggle full screen
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      chatContainerRef.current.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
+  
+  // Toggle voice recording
+  const toggleRecording = () => {
+    if (isRecording) {
+      recognition.stop();
+    } else {
+      setTranscript("");
+      recognition.start();
+      setIsRecording(true);
+    }
+  };
+  
+  // Navigate to dashboard
+  const navigateToDashboard = useCallback(() => {
+    navigate('/dashboard');
+  }, [navigate]);
+  
+  // Handle logout
+  const handleLogout = () => {
+    onLogout();
+    navigate('/');
+  };
+  
+  // API call to get AI response (replace with your actual API endpoint)
+  const getAIResponse = async (userMessage) => {
+    try {
+      // Replace this with your actual API call
+      const response = await fetch('https://api.your-ai-service.com/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer YOUR_API_KEY' // Add your API key here
+        },
+        body: JSON.stringify({
+          message: userMessage.content,
+          history: prevChats.slice(-10) // Send last 10 messages for context
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data.reply;
+    } catch (error) {
+      console.error("Error fetching AI response:", error);
+      return "Sorry, I'm having trouble connecting to the server right now.";
+    }
+  };
+  
+  const getReply = useCallback(async () => {
+    if (!prompt || !prompt.trim() || loading) return;
+    
+    // Add user message
+    const userMessage = {
+      role: "user",
+      content: prompt,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+      })
+    };
+    
+    setPrevChats(prev => [...prev, userMessage]);
+    setLoading(true);
+    setPrompt("");
+    
+    try {
+      // Get AI response (replace with your actual API integration)
+      const aiResponse = await getAIResponse(userMessage);
+      
+      const assistantMessage = {
+        role: "assistant",
+        content: aiResponse,
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit"
+        })
+      };
+      
+      setPrevChats(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error("Error getting reply:", error);
+      
+      const errorMessage = {
+        role: "assistant",
+        content: "Sorry, I'm having trouble connecting to the server right now.",
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit"
+        })
+      };
+      
+      setPrevChats(prev => [...prev, errorMessage]);
+    } finally {
+      setLoading(false);
+    }
+  }, [prompt, loading, prevChats]);
+  
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      getReply();
+    }
+  };
 
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-
-  // 🌙 Dark / Light mode state
-  const [darkMode, setDarkMode] = useState(false);
-
-  // 🎤 Voice input state
-  const [isRecording, setIsRecording] = useState(false);
-  const recognitionRef = useRef(null);
-
-  // 🔊 Voice output
-  const synthRef = useRef(window.speechSynthesis);
-
-  // ✅ Toggle dark theme on <html>
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
-
-  const API_BASE = import.meta.env.VITE_API_URL;
-
-  // 🎤 Setup Speech Recognition (STT)
-  useEffect(() => {
-    if ("webkitSpeechRecognition" in window) {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = "en-US";
-
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setPrompt(transcript);
-      };
-
-      recognition.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
-        setIsRecording(false);
-      };
-
-      recognition.onend = () => {
-        setIsRecording(false);
-      };
-
-      recognitionRef.current = recognition;
-    }
-  }, [setPrompt]);
-
-  // 🎤 Toggle mic
-  const toggleRecording = () => {
-    if (!recognitionRef.current) {
-      alert("Speech Recognition not supported in this browser.");
-      return;
-    }
-    if (isRecording) {
-      recognitionRef.current.stop();
-      setIsRecording(false);
-    } else {
-      recognitionRef.current.start();
-      setIsRecording(true);
-    }
-  };
-
-  // 🔊 Speak assistant reply
-  const speak = (text) => {
-    if (!text || !synthRef.current) return;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-US";
-    synthRef.current.cancel();
-    synthRef.current.speak(utterance);
-  };
-
-  const getReply = async () => {
-    if (!prompt.trim() || loading) return;
-
-    setPrevChats((prevChats) => [
-      ...prevChats,
-      {
-        role: "user",
-        content: prompt,
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      },
-    ]);
-
-    setLoading(true);
-    setErrorMsg("");
-
-    try {
-      const response = await fetch(`${API_BASE}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: prompt, threadId: currThreadId }),
-      });
-
-      if (!response.ok) throw new Error(`Server error: ${response.status}`);
-
-      const res = await response.json();
-      console.log("✅ Server response:", res);
-
-      setPrevChats((prevChats) => [
-        ...prevChats,
-        {
-          role: "assistant",
-          content: res.reply,
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        },
-      ]);
-
-      setReply(res.reply);
-      speak(res.reply);
-    } catch (err) {
-      console.error("❌ Chat Request Failed:", err.message);
-      setPrevChats((prevChats) => [
-        ...prevChats,
-        {
-          role: "assistant",
-          content: "⚠️ Could not connect to the server.",
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        },
-      ]);
-      setErrorMsg(
-        "⚠️ Could not connect to the server. Make sure the backend is running."
-      );
-    } finally {
-      setPrompt("");
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="chatWindow bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300 min-h-screen">
-      {/* Navbar */}
-      <div className="navbar flex justify-between items-center px-4 py-2 bg-white dark:bg-gray-800 shadow relative">
-        {/* Left: Logo + Title */}
-        <div className="navbar-left flex items-center gap-2">
-          <img
-            src="src/new.jpg"
-            alt="Logo"
-            className="navbar-logo w-8 h-8 rounded"
-          />
-          <span className="navbar-title font-semibold">
-            PersonalAI
-            <i className="fa-solid fa-chevron-down dropdown-icon ml-1"></i>
-          </span>
-        </div>
-
-        {/* Right: Dark mode + Chat History + User */}
-        <div className="flex items-center space-x-3">
-          {/* Dark mode toggle */}
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200"
-          >
-            {darkMode ? (
-              <Sun className="w-5 h-5 text-yellow-400" />
-            ) : (
-              <Moon className="w-5 h-5 text-gray-800" />
-            )}
-          </button>
-
-          {/* Chat History button (Search) */}
-          <button
-            onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200"
-          >
-            <Search className="w-5 h-5" />
-          </button>
-
-          {/* User icon (Admin) */}
-          <button
-            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            <User className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Dropdown under user icon */}
-        {isOpen && (
-          <div className="dropDown bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-md absolute right-4 top-12 rounded-lg overflow-hidden z-50">
-            <div className="dropDownItem px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
-              <i className="fa-solid fa-gear mr-2"></i> Settings
-            </div>
-            <div className="dropDownItem px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
-              <i className="fa-solid fa-cloud-arrow-up mr-2"></i> Upgrade
-            </div>
-            <div className="dropDownItem px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
-              <i className="fa-solid fa-arrow-right-from-bracket mr-2"></i> Log out
-            </div>
-          </div>
-        )}
-
-        {/* Chat History dropdown */}
-        {isHistoryOpen && (
-          <div className="dropDown bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-md absolute right-20 top-12 rounded-lg overflow-hidden z-50 max-h-60 overflow-y-auto w-64">
-            {prevChats.length === 0 ? (
-              <div className="px-4 py-2 text-gray-500 dark:text-gray-400">
-                No chat history
-              </div>
-            ) : (
-              prevChats
-                .slice()
-                .reverse()
-                .map((chat, index) => (
-                  <div
-                    key={index}
-                    className="px-4 py-2 border-b dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    <strong>{chat.role === "user" ? "You" : "AI"}:</strong>{" "}
-                    {chat.content}
-                  </div>
-                ))
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Chat Area */}
-      <div className="chatArea p-4">
-        <Chat messages={prevChats} />
-        {loading && (
-          <div className="loader-overlay flex flex-col items-center mt-4">
-            <ScaleLoader color="#4cafef" loading={loading} />
-            <p className="loading-text mt-2">Thinking...</p>
-          </div>
-        )}
-      </div>
-
-      {/* Chat Input */}
-      <div className="chatInput flex items-center gap-2 p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-        <input
-          type="text"
-          placeholder="Ask anything"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && getReply()}
-          className="flex-1 rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none"
-        />
-
-        {/* 🖼️ Image upload button */}
-        <button
-          onClick={() => alert("Image upload functionality coming soon!")}
-          className="p-2 rounded-full bg-gray-200 dark:bg-gray-600"
-        >
-          <Image />
-        </button>
-
-        {/* 📎 File upload button */}
-        <button
-          onClick={() => alert("File upload functionality coming soon!")}
-          className="p-2 rounded-full bg-gray-200 dark:bg-gray-600"
-        >
-          <Paperclip />
-        </button>
-
-        {/* 🎤 Mic button */}
-        <button
-          onClick={toggleRecording}
-          className="p-2 rounded-full bg-gray-200 dark:bg-gray-600"
-          style={{ color: isRecording ? "red" : "inherit" }}
-        >
-          {isRecording ? <MicOff /> : <Mic />}
-        </button>
-
-        {/* Send button */}
-        <button
-          id="submit"
-          onClick={getReply}
-          disabled={loading}
-          className="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
-          style={{ opacity: loading ? 0.6 : 1 }}
-        >
-          {loading ? (
-            <i className="fa-solid fa-spinner fa-spin"></i>
-          ) : (
-            <i className="fa-solid fa-paper-plane"></i>
-          )}
-        </button>
-      </div>
-
-      {errorMsg && (
-        <p className="info text-red-500 text-center mt-2">{errorMsg}</p>
-      )}
-
-      <p className="info text-center text-sm text-gray-700 dark:text-gray-300 py-2">
-        ⚠️ PersonalAI can make mistakes. Check important info. See Cookie
-        Preferences.
-      </p>
-    </div>
-  );
-}
+  return (
+    <div 
+      ref={chatContainerRef}
+      className={`chat-container ${darkMode ? 'dark' : 'light'} ${isFullScreen ? 'fullscreen' : ''}`}
+    >
+      <div className="header">
+        <div className="logo-container" onClick={navigateToDashboard} style={{cursor: 'pointer'}}>
+          <div className="logo">AI</div>
+          <div className="app-name">AI Assistant</div>
+        </div>
+        <div className="header-icons">
+          <button 
+            className="icon-btn" 
+            onClick={() => setDarkMode(!darkMode)}
+            aria-label="Toggle dark mode"
+          >
+            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <button 
+            className="icon-btn" 
+            onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+            aria-label="Search history"
+          >
+            <Search size={20} />
+          </button>
+          <button 
+            className="icon-btn" 
+            onClick={toggleFullScreen}
+            aria-label="Toggle full screen"
+          >
+            {isFullScreen ? <Minimize size={20} /> : <Maximize size={20} />}
+          </button>
+          <button 
+            className="icon-btn" 
+            onClick={() => setIsOpen(!isOpen)}
+            aria-label="User menu"
+          >
+            <User size={20} />
+          </button>
+        </div>
+        
+        {/* User dropdown */}
+        {isOpen && (
+          <div className="dropdown-menu">
+            <div className="dropdown-item">
+              <Settings size={16} />
+              <span>Settings</span>
+            </div>
+            <div className="dropdown-item">
+              <Upload size={16} />
+              <span>Upgrade</span>
+            </div>
+            <div className="dropdown-item" onClick={handleLogout}>
+              <LogOut size={16} />
+              <span>Log out</span>
+            </div>
+          </div>
+        )}
+        
+        {/* History dropdown */}
+        {isHistoryOpen && (
+          <div className="dropdown-menu history-dropdown">
+            <div className="dropdown-header">
+              <span>Chat History</span>
+              <button 
+                className="icon-btn"
+                onClick={() => setIsHistoryOpen(false)}
+                aria-label="Close history"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="history-list">
+              {prevChats.length === 0 ? (
+                <div className="empty-history">No chat history yet</div>
+              ) : (
+                prevChats.map((chat, index) => (
+                  <div key={index} className="history-item">
+                    <div className="history-content">
+                      <strong>{chat.role === "user" ? "You" : "AI"}:</strong> {chat.content}
+                    </div>
+                    <div className="history-time">{chat.timestamp}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      
+      <div className="chat-area">
+        {prevChats.map((chat, index) => (
+          <div 
+            key={index} 
+            className={`message ${chat.role === 'assistant' ? 'ai-message' : 'user-message'}`}
+          >
+            <div className="message-content">{chat.content}</div>
+            <div className="message-time">{chat.timestamp}</div>
+          </div>
+        ))}
+        {loading && (
+          <div className="message ai-message">
+            <div className="message-content">
+              <Loader size={16} className="thinking-animation" /> Thinking...
+            </div>
+            <div className="message-time">
+              {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </div>
+          </div>
+        )}
+        {isRecording && (
+          <div className="message ai-message">
+            <div className="message-content">
+              <div className="recording-indicator">
+                <span className="pulse"></span>
+                Listening... {transcript && `"${transcript}"`}
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+      
+      <div className="input-area">
+        <div className="input-container">
+          <input
+            type="text"
+            className="input-field"
+            placeholder="Ask anything..."
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={loading}
+          />
+          <div className="input-actions">
+            <button className="icon-btn" aria-label="Attach image">
+              <Image size={20} />
+            </button>
+            <button className="icon-btn" aria-label="Attach file">
+              <Paperclip size={20} />
+            </button>
+            <button 
+              className={`icon-btn ${isRecording ? 'recording' : ''}`}
+              onClick={toggleRecording}
+              disabled={!recognition}
+              aria-label={isRecording ? "Stop recording" : "Start voice search"}
+            >
+              {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
+            </button>
+            <button 
+              className="action-btn" 
+              onClick={getReply}
+              disabled={loading || !prompt.trim()}
+              aria-label="Send message"
+            >
+              {loading ? <Loader size={20} className="spin" /> : <Send size={20} />}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default ChatWindow;
